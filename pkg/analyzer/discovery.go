@@ -68,7 +68,7 @@ func NewComponentDiscovery(c client.Client) *ComponentDiscovery {
 	return &ComponentDiscovery{client: c}
 }
 
-func (d *ComponentDiscovery) DiscoverComponents(ctx context.Context, namespace string) ([]*Component, error) {
+func (d *ComponentDiscovery) DiscoverComponents(ctx context.Context, namespace string, clusterName string) ([]*Component, error) {
 	var allComponents []*Component
 
 	for componentType, gvk := range SupportedGVKs {
@@ -79,6 +79,11 @@ func (d *ComponentDiscovery) DiscoverComponents(ctx context.Context, namespace s
 			continue
 		}
 		allComponents = append(allComponents, components...)
+	}
+
+	// Filter by cluster name if specified
+	if clusterName != "" {
+		allComponents = d.filterByCluster(allComponents, clusterName)
 	}
 
 	return allComponents, nil
@@ -123,6 +128,9 @@ func (d *ComponentDiscovery) convertUnstructuredToComponent(obj *unstructured.Un
 		GVK:       gvk,
 		Metadata:  make(map[string]interface{}),
 	}
+
+	// Extract labels
+	component.Metadata["labels"] = obj.GetLabels()
 
 	// Extract conditions from status
 	if status, found, err := unstructured.NestedMap(obj.Object, "status"); found && err == nil {
@@ -213,4 +221,43 @@ func (d *ComponentDiscovery) determineComponentStatus(conditions []metav1.Condit
 	}
 
 	return StatusHealthy
+}
+
+func (d *ComponentDiscovery) filterByCluster(components []*Component, clusterName string) []*Component {
+	var filtered []*Component
+	clusterMap := make(map[string]bool)
+
+	// First pass: find all Cluster resources with matching name
+	for _, comp := range components {
+		if comp.Type == ClusterType && comp.Name == clusterName {
+			filtered = append(filtered, comp)
+			clusterMap[comp.Namespace+"/"+comp.Name] = true
+		}
+	}
+
+	// Second pass: filter components that belong to the specified cluster
+	for _, comp := range components {
+		if comp.Type == ClusterType {
+			continue // Already added
+		}
+
+		// Check if component has cluster owner reference in labels
+		if spec, ok := comp.Metadata["spec"].(map[string]interface{}); ok {
+			// Check for clusterName in spec
+			if cn, ok := spec["clusterName"].(string); ok && cn == clusterName {
+				filtered = append(filtered, comp)
+				continue
+			}
+		}
+
+		// Check labels for cluster association
+		if labels, ok := comp.Metadata["labels"].(map[string]string); ok {
+			if cn, ok := labels["cluster.x-k8s.io/cluster-name"]; ok && cn == clusterName {
+				filtered = append(filtered, comp)
+				continue
+			}
+		}
+	}
+
+	return filtered
 }

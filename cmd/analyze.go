@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	namespace   string
+	namespace    string
+	clusterName  string
 	outputFormat string
-	showTree    bool
+	showTree     bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -33,6 +34,7 @@ for resolving any issues.`,
 
 func init() {
 	analyzeCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to analyze (empty for all namespaces)")
+	analyzeCmd.Flags().StringVarP(&clusterName, "cluster", "c", "", "CAPI cluster name to analyze (empty for all clusters)")
 	analyzeCmd.Flags().StringVarP(&outputFormat, "output", "o", "report", "Output format: report, json, yaml")
 	analyzeCmd.Flags().BoolVar(&showTree, "tree", false, "Show component dependency tree")
 }
@@ -58,7 +60,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// Discover components
 	fmt.Println("🔍 Discovering Cluster API and Metal3 components...")
 	discovery := analyzer.NewComponentDiscovery(k8sClient.Client)
-	components, err := discovery.DiscoverComponents(ctx, namespace)
+	components, err := discovery.DiscoverComponents(ctx, namespace, clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to discover components: %v", err)
 	}
