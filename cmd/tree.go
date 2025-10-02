@@ -34,7 +34,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 
 	// Discover components
 	discovery := analyzer.NewComponentDiscovery(k8sClient.Client)
-	components, err := discovery.DiscoverComponents(ctx, namespace)
+	components, err := discovery.DiscoverComponents(ctx, namespace, "")
 	if err != nil {
 		return fmt.Errorf("failed to discover components: %v", err)
 	}
