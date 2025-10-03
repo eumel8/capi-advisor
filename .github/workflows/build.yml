@@ -1,5 +1,8 @@
 name: Build (template)
 
+permissions:
+  contents: read
+
 on:
   push:
     tags:
