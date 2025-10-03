@@ -36,6 +36,9 @@ Get a full analysis with recommendations for all components:
 # Analyze components in a specific namespace
 ./capi-advisor analyze -n cluster-system
 
+# Analyze a specific CAPI cluster
+./capi-advisor analyze -c my-cluster
+
 # Show dependency tree along with analysis
 ./capi-advisor analyze --tree
 
@@ -53,6 +56,9 @@ Focus on health issues and their solutions:
 
 # Check specific namespace
 ./capi-advisor doctor -n cluster-system
+
+# Check specific CAPI cluster
+./capi-advisor doctor -c my-cluster
 ```
 
 ### Dependency Tree View
@@ -65,6 +71,9 @@ Visualize component relationships:
 
 # Focus on specific namespace
 ./capi-advisor tree -n cluster-system
+
+# Show tree for specific CAPI cluster
+./capi-advisor tree -c my-cluster
 ```
 
 ## Examples

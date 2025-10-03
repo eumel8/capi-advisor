@@ -21,6 +21,7 @@ showing the hierarchical relationships between clusters, machines, and infrastru
 
 func init() {
 	treeCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to analyze (empty for all namespaces)")
+	treeCmd.Flags().StringVarP(&clusterName, "cluster", "c", "", "CAPI cluster name to analyze (empty for all clusters)")
 }
 
 func runTree(cmd *cobra.Command, args []string) error {
@@ -34,7 +35,7 @@ func runTree(cmd *cobra.Command, args []string) error {
 
 	// Discover components
 	discovery := analyzer.NewComponentDiscovery(k8sClient.Client)
-	components, err := discovery.DiscoverComponents(ctx, namespace, "")
+	components, err := discovery.DiscoverComponents(ctx, namespace, clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to discover components: %v", err)
 	}
