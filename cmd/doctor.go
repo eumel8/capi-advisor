@@ -21,6 +21,7 @@ This command focuses on identifying and providing solutions for issues.`,
 
 func init() {
 	doctorCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to analyze (empty for all namespaces)")
+	doctorCmd.Flags().StringVarP(&clusterName, "cluster", "c", "", "CAPI cluster name to analyze (empty for all clusters)")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
@@ -45,7 +46,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	// Discover components
 	discovery := analyzer.NewComponentDiscovery(k8sClient.Client)
-	components, err := discovery.DiscoverComponents(ctx, namespace, "")
+	components, err := discovery.DiscoverComponents(ctx, namespace, clusterName)
 	if err != nil {
 		return fmt.Errorf("failed to discover components: %v", err)
 	}
