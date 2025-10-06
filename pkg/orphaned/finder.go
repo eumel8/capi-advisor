@@ -92,33 +92,33 @@ func (f *Finder) findOrphanedMetal3DataClaims(ctx context.Context) ([]string, er
 	for _, claim := range obj.Items {
 		claimName := claim.GetName()
 
-		// Check ownerRef
-		spec, ok := claim.Object["spec"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		ownerRef, ok := spec["ownerRef"].(map[string]interface{})
-		if !ok || ownerRef == nil {
+		// Check metadata.ownerReferences
+		ownerRefs := claim.GetOwnerReferences()
+		if len(ownerRefs) == 0 {
 			orphaned = append(orphaned, claimName)
 			continue
 		}
 
-		refName, ok := ownerRef["name"].(string)
-		if !ok || refName == "" {
-			orphaned = append(orphaned, claimName)
-			continue
+		// Verify that at least one owner reference points to an existing Metal3Machine
+		hasValidOwner := false
+		for _, ownerRef := range ownerRefs {
+			if ownerRef.Kind == "Metal3Machine" {
+				// Check if referenced Metal3Machine exists
+				_, err := f.client.Clientset.Discovery().RESTClient().
+					Get().
+					AbsPath(fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s/%s",
+						m3mGVR.Group, m3mGVR.Version, f.namespace, m3mGVR.Resource, ownerRef.Name)).
+					Do(ctx).
+					Raw()
+				if err == nil {
+					// Owner exists
+					hasValidOwner = true
+					break
+				}
+			}
 		}
 
-		// Check if referenced Metal3Machine exists
-		_, err := f.client.Clientset.Discovery().RESTClient().
-			Get().
-			AbsPath(fmt.Sprintf("/apis/%s/%s/namespaces/%s/%s/%s",
-				m3mGVR.Group, m3mGVR.Version, f.namespace, m3mGVR.Resource, refName)).
-			Do(ctx).
-			Raw()
-		if err != nil {
-			// Metal3Machine doesn't exist, mark as orphaned
+		if !hasValidOwner {
 			orphaned = append(orphaned, claimName)
 		}
 	}
@@ -148,33 +148,33 @@ func (f *Finder) findOrphanedMetal3Data(ctx context.Context) ([]string, error) {
 	for _, data := range obj.Items {
 		dataName := data.GetName()
 
-		// Check claimRef
-		spec, ok := data.Object["spec"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		claimRef, ok := spec["claimRef"].(map[string]interface{})
-		if !ok || claimRef == nil {
+		// Check metadata.ownerReferences
+		ownerRefs := data.GetOwnerReferences()
+		if len(ownerRefs) == 0 {
 			orphaned = append(orphaned, dataName)
 			continue
 		}
 
-		refName, ok := claimRef["name"].(string)
-		if !ok || refName == "" {
-			orphaned = append(orphaned, dataName)
-			continue
+		// Verify that at least one owner reference points to an existing Metal3DataClaim
+		hasValidOwner := false
+		for _, ownerRef := range ownerRefs {
+			if ownerRef.Kind == "Metal3DataClaim" {
+				// Check if referenced Metal3DataClaim exists
+				_, err := f.client.Clientset.Discovery().RESTClient().
+					Get().
+					AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3dataclaims/%s",
+						f.namespace, ownerRef.Name)).
+					Do(ctx).
+					Raw()
+				if err == nil {
+					// Owner exists
+					hasValidOwner = true
+					break
+				}
+			}
 		}
 
-		// Check if referenced Metal3DataClaim exists
-		_, err := f.client.Clientset.Discovery().RESTClient().
-			Get().
-			AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3dataclaims/%s",
-				f.namespace, refName)).
-			Do(ctx).
-			Raw()
-		if err != nil {
-			// Metal3DataClaim doesn't exist, mark as orphaned
+		if !hasValidOwner {
 			orphaned = append(orphaned, dataName)
 		}
 	}
@@ -199,10 +199,48 @@ func (f *Finder) findOrphanedSecrets(ctx context.Context) ([]string, error) {
 			continue
 		}
 
-		// Check ownerReferences
+		// Check metadata.ownerReferences
+		if len(secret.OwnerReferences) == 0 {
+			orphaned = append(orphaned, secretName)
+			continue
+		}
+
+		// Verify that at least one owner reference points to an existing resource
 		hasValidOwner := false
-		for _, owner := range secret.OwnerReferences {
-			if strings.Contains(owner.Name, "metal3") {
+		for _, ownerRef := range secret.OwnerReferences {
+			// Check if the owner exists based on its Kind
+			var exists bool
+			switch ownerRef.Kind {
+			case "Metal3Machine":
+				_, err := f.client.Clientset.Discovery().RESTClient().
+					Get().
+					AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3machines/%s",
+						f.namespace, ownerRef.Name)).
+					Do(ctx).
+					Raw()
+				exists = (err == nil)
+			case "Metal3DataClaim":
+				_, err := f.client.Clientset.Discovery().RESTClient().
+					Get().
+					AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3dataclaims/%s",
+						f.namespace, ownerRef.Name)).
+					Do(ctx).
+					Raw()
+				exists = (err == nil)
+			case "Metal3Data":
+				_, err := f.client.Clientset.Discovery().RESTClient().
+					Get().
+					AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3datas/%s",
+						f.namespace, ownerRef.Name)).
+					Do(ctx).
+					Raw()
+				exists = (err == nil)
+			default:
+				// For other kinds, assume they exist if we can't verify
+				exists = true
+			}
+
+			if exists {
 				hasValidOwner = true
 				break
 			}
