@@ -8,7 +8,7 @@ on:
     types: [created]
 
 env:
-  ldflags: "-X main.version=${{ GITHUB_REF_NAME }}"
+  ldflags: "-X main.version=${GITHUB_REF_NAME}"
 
 jobs:
   call-workflow:
