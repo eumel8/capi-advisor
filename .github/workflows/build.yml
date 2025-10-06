@@ -12,4 +12,4 @@ env:
 
 jobs:
   call-workflow:
-    uses: eumel8/workflow-templates/.github/workflows/build.yaml@0.0.11
+    uses: eumel8/workflow-templates/.github/workflows/build.yaml@0.0.12
