@@ -132,7 +132,7 @@ func (f *Finder) findOrphanedMetal3Data(ctx context.Context) ([]string, error) {
 	// List all Metal3Data
 	dataList, err := f.client.Clientset.Discovery().RESTClient().
 		Get().
-		AbsPath("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/" + f.namespace + "/metal3data").
+		AbsPath("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/" + f.namespace + "/metal3datas").
 		Do(ctx).
 		Raw()
 	if err != nil {
@@ -234,7 +234,7 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 	for _, data := range results.Metal3Data {
 		err := f.client.Clientset.Discovery().RESTClient().
 			Delete().
-			AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3data/%s",
+			AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3datas/%s",
 				f.namespace, data)).
 			Do(ctx).
 			Error()
