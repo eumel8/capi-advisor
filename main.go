@@ -20,6 +20,7 @@ Available commands:
   analyze  - Comprehensive analysis with recommendations
   doctor   - Focus on health diagnostics and issue resolution
   tree     - Show component dependency relationships
+  orphaned - Find and clean up orphaned Metal3 resources
 
 Examples:
   # Analyze all components and get recommendations
@@ -31,6 +32,9 @@ Examples:
   # Show component dependency tree
   capi-advisor tree
 
+  # Find orphaned resources
+  capi-advisor orphaned -n cluster-namespace
+
   # Get detailed analysis as JSON
   capi-advisor analyze -o json`,
 }
@@ -39,6 +43,7 @@ func init() {
 	rootCmd.AddCommand(cmd.AnalyzeCmd)
 	rootCmd.AddCommand(cmd.DoctorCmd)
 	rootCmd.AddCommand(cmd.TreeCmd)
+	rootCmd.AddCommand(cmd.OrphanedCmd)
 }
 
 func main() {
