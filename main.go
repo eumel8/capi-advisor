@@ -9,9 +9,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	version = "dev"
+)
+
 var rootCmd = &cobra.Command{
-	Use:   "capi-advisor",
-	Short: "Analyze Cluster API and Metal3 components and provide recommendations",
+	Use:     "capi-advisor",
+	Short:   "Analyze Cluster API and Metal3 components and provide recommendations",
+	Version: version,
 	Long: `A CLI tool to analyze Cluster API and Metal3 cluster components,
 check their conditions, build dependency trees, and provide clear advice
 on how to resolve any issues found.
