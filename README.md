@@ -165,6 +165,7 @@ from [Git Repo](https://github.com/kubernetes-sigs/cluster-api/releases)
 example:
 
 <details>
+
 ```bash
 $ clusterctl describe cluster my-cluster-1 -n metal3-my-infra --show-conditions all
 NAME                                                READY  SEVERITY  REASON                                                          SINCE  MESSAGE                       
@@ -200,6 +201,7 @@ Cluster/my-cluster-1                                  True                      
     │           └─MachineSetReady                   False  Warning   ScalingUp                                                       13s    Scaling up MachineSet to 2 replicas (actual 0)
     └─2 Machines...                               
 ```
+
 </details>
 
 ### kubectl tree
@@ -209,6 +211,7 @@ from [Git Repo](https://github.com/ahmetb/kubectl-tree)
 example:
 
 <details>
+
 ```bash
 $ kubectl tree -n metal3-my-infra cluster my-cluster-1
 NAMESPACE         NAME                                                                                 READY  REASON                                                          AGE
@@ -219,6 +222,7 @@ metal3-my-infra  ├─KubeadmControlPlane/my-cluster-1                         
 metal3-my-infra  │ ├─Machine/my-cluster-1-ftxxh           
 ...
 ```
+
 </details>
 
 ## License
