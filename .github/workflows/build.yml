@@ -8,8 +8,8 @@ on:
     types: [created]
 
 env:
-  ldflags: "-X main.version=${GITHUB_REF_NAME}"
+  ldflags: "-X main.version=${{ github.ref_name }}"
 
 jobs:
   call-workflow:
-    uses: eumel8/workflow-templates/.github/workflows/build.yaml@0.0.12
+    uses: eumel8/workflow-templates/.github/workflows/build.yaml@0.0.13
