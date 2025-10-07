@@ -267,7 +267,8 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 			Do(ctx).
 			Error()
 		if err != nil {
-			return fmt.Errorf("failed to delete Metal3DataClaim %s: %w", claim, err)
+			// warn but continue
+			fmt.Sprintf("failed to delete Metal3DataClaim %s: %w", claim, err)
 		}
 	}
 
@@ -283,7 +284,8 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 			Do(ctx).
 			Error()
 		if err != nil {
-			return fmt.Errorf("failed to delete Metal3Data %s: %w", data, err)
+			// warn but continue
+			fmt.Sprintf("failed to delete Metal3Data %s: %w", data, err)
 		}
 	}
 
@@ -304,7 +306,8 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 
 		err = f.client.Clientset.CoreV1().Secrets(f.namespace).Delete(ctx, secret, metav1.DeleteOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to delete Secret %s: %w", secret, err)
+			// warn but continue
+			fmt.Sprintf("failed to delete Secret %s: %w", secret, err)
 		}
 	}
 
