@@ -257,6 +257,9 @@ func (f *Finder) findOrphanedSecrets(ctx context.Context) ([]string, error) {
 func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) error {
 	// Delete orphaned Metal3DataClaims
 	for _, claim := range results.Metal3DataClaims {
+		if err := f.removeFinalizers(ctx, "metal3dataclaims", claim); err != nil {
+			return fmt.Errorf("failed to remove finalizers from Metal3DataClaim %s: %w", claim, err)
+		}
 		err := f.client.Clientset.Discovery().RESTClient().
 			Delete().
 			AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3dataclaims/%s",
@@ -270,6 +273,9 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 
 	// Delete orphaned Metal3Data
 	for _, data := range results.Metal3Data {
+		if err := f.removeFinalizers(ctx, "metal3datas", data); err != nil {
+			return fmt.Errorf("failed to remove finalizers from Metal3Data %s: %w", data, err)
+		}
 		err := f.client.Clientset.Discovery().RESTClient().
 			Delete().
 			AbsPath(fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/metal3datas/%s",
@@ -283,10 +289,73 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 
 	// Delete orphaned Secrets
 	for _, secret := range results.Secrets {
-		err := f.client.Clientset.CoreV1().Secrets(f.namespace).Delete(ctx, secret, metav1.DeleteOptions{})
+		// Remove finalizers from secret
+		secretObj, err := f.client.Clientset.CoreV1().Secrets(f.namespace).Get(ctx, secret, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get Secret %s: %w", secret, err)
+		}
+		if len(secretObj.Finalizers) > 0 {
+			secretObj.Finalizers = []string{}
+			_, err = f.client.Clientset.CoreV1().Secrets(f.namespace).Update(ctx, secretObj, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to remove finalizers from Secret %s: %w", secret, err)
+			}
+		}
+
+		err = f.client.Clientset.CoreV1().Secrets(f.namespace).Delete(ctx, secret, metav1.DeleteOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to delete Secret %s: %w", secret, err)
 		}
+	}
+
+	return nil
+}
+
+// removeFinalizers removes all finalizers from a Metal3 resource
+func (f *Finder) removeFinalizers(ctx context.Context, resourceType, resourceName string) error {
+	// Get the current resource
+	resourcePath := fmt.Sprintf("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/%s/%s/%s",
+		f.namespace, resourceType, resourceName)
+
+	rawResource, err := f.client.Clientset.Discovery().RESTClient().
+		Get().
+		AbsPath(resourcePath).
+		Do(ctx).
+		Raw()
+	if err != nil {
+		return fmt.Errorf("failed to get resource: %w", err)
+	}
+
+	// Parse with unstructured
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(rawResource); err != nil {
+		return fmt.Errorf("failed to unmarshal resource: %w", err)
+	}
+
+	// Check if there are finalizers
+	finalizers := obj.GetFinalizers()
+	if len(finalizers) == 0 {
+		return nil // No finalizers to remove
+	}
+
+	// Remove all finalizers
+	obj.SetFinalizers([]string{})
+
+	// Update the resource
+	updatedJSON, err := obj.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to marshal resource: %w", err)
+	}
+
+	_, err = f.client.Clientset.Discovery().RESTClient().
+		Put().
+		AbsPath(resourcePath).
+		Body(updatedJSON).
+		SetHeader("Content-Type", "application/json").
+		Do(ctx).
+		Raw()
+	if err != nil {
+		return fmt.Errorf("failed to update resource: %w", err)
 	}
 
 	return nil
