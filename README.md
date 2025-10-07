@@ -156,6 +156,71 @@ This tool is designed to be extensible. To add support for new component types:
 2. Add relationship logic in `pkg/tree/builder.go`
 3. Add condition knowledge to the advisor in `pkg/advisor/advisor.go`
 
+## Alternates
+
+### clusterctl
+
+from [Git Repo](https://github.com/kubernetes-sigs/cluster-api/releases)
+
+example:
+
+<details>
+```bash
+$ clusterctl describe cluster my-cluster-1 -n metal3-my-infra --show-conditions all
+NAME                                                READY  SEVERITY  REASON                                                          SINCE  MESSAGE                       
+Cluster/my-cluster-1                                  True                                                                             31s                                  
+│           ├─ControlPlaneInitialized               True                                                                             15m                                  
+│           ├─ControlPlaneReady                     True                                                                             31s                                  
+│           └─InfrastructureReady                   True                                                                             31m                                  
+├─ClusterInfrastructure - Metal3Cluster/my-cluster-1  True                                                                             31m                                  
+│             └─BaremetalInfrastructureReady        True                                                                             31m                                  
+├─ControlPlane - KubeadmControlPlane/my-cluster-1     True                                                                             31s                                  
+│ │           ├─Available                           True                                                                             15m                                  
+│ │           ├─CertificatesAvailable               True                                                                             31m                                  
+│ │           ├─ControlPlaneComponentsHealthy       True                                                                             66s                                  
+│ │           ├─EtcdClusterHealthy                  True                                                                             72s                                  
+│ │           ├─MachinesCreated                     True                                                                             65s                                  
+│ │           ├─MachinesReady                       True                                                                             31s                                  
+│ │           └─Resized                             True                                                                             64s                                  
+│ └─3 Machines...                                   True                                                                             15m    See my-cluster-1-ftxxh, my-cluster-1-tdh8j, ...
+└─Workers                                                                                                                                                                 
+  ├─MachineDeployment/my-cluster-1-default-v3         False  Warning   WaitingForAvailableMachines                                     31m    Minimum availability requires 2 replicas, current 0 available
+  │ │           ├─Available                         False  Warning   WaitingForAvailableMachines                                     31m    Minimum availability requires 2 replicas, current 0 available
+  │ │           └─MachineSetReady                   False  Error     AssociateBMHFailed @ Machine/my-cluster-1-default-v3-b8qqb-67w5p  41s    0 of 2 completed              
+  │ ├─Machine/my-cluster-1-default-v3-b8qqb-67w5p     False  Error     AssociateBMHFailed                                              15m    1 of 2 completed              
+  │ │             ├─BootstrapReady                  True                                                                             15m                                  
+  │ │             ├─InfrastructureReady             False  Error     AssociateBMHFailed                                              15m    No available host found. Requeuing.. Object will be requeued after 30s
+  │ │             └─NodeHealthy                     False  Info      WaitingForNodeRef                                               31m                                  
+  │ └─Machine/my-cluster-1-default-v3-b8qqb-x79q4     False  Error     SettingProviderIDOnNodeFailed                                   41s    1 of 2 completed              
+  │               ├─BootstrapReady                  True                                                                             15m                                  
+  │               ├─InfrastructureReady             False  Error     SettingProviderIDOnNodeFailed                                   41s    Some target nodes do not have spec.providerID field set yet, requeuing. Object will be requeued afte ...
+  │               └─NodeHealthy                     False  Info      WaitingForNodeRef                                               31m                                  
+  └─MachineDeployment/my-cluster-1-sriov              False  Warning   WaitingForAvailableMachines                                     31m    Minimum availability requires 2 replicas, current 0 available
+    │           ├─Available                         False  Warning   WaitingForAvailableMachines                                     31m    Minimum availability requires 2 replicas, current 0 available
+    │           └─MachineSetReady                   False  Warning   ScalingUp                                                       13s    Scaling up MachineSet to 2 replicas (actual 0)
+    └─2 Machines...                               
+```
+</details>
+
+### kubectl tree
+
+from [Git Repo](https://github.com/ahmetb/kubectl-tree)
+
+example:
+
+<details>
+```bash
+$ kubectl tree -n metal3-my-infra cluster my-cluster-1
+NAMESPACE         NAME                                                                                 READY  REASON                                                          AGE
+metal3-my-infra  Cluster/my-cluster-1                                                                   True                                                                   34m
+metal3-my-infra  ├─KubeadmConfigTemplate/my-cluster-1-default-v3-2                                      -                                                                      34m
+metal3-my-infra  ├─KubeadmConfigTemplate/my-cluster-1-sriov-7                                           -                                                                      34m
+metal3-my-infra  ├─KubeadmControlPlane/my-cluster-1                                                     True                                                                   34m
+metal3-my-infra  │ ├─Machine/my-cluster-1-ftxxh           
+...
+```
+</details>
+
 ## License
 
 This project is licensed under the MIT License.
