@@ -293,6 +293,7 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 	for _, secret := range results.Secrets {
 		// Remove finalizers from secret
 		secretObj, err := f.client.Clientset.CoreV1().Secrets(f.namespace).Get(ctx, secret, metav1.GetOptions{})
+
 		if err != nil {
 			return fmt.Errorf("failed to get Secret %s: %w", secret, err)
 		}
