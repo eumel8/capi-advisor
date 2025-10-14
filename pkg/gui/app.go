@@ -90,7 +90,10 @@ func (a *App) setupUI() {
 		container.NewTabItem("Issues & Recommendations", a.createIssuesTab()),
 	)
 
-	a.window.SetContent(tabs)
+
+	fyne.DoAndWait(func() {
+		a.window.SetContent(tabs)
+	})
 }
 
 func (a *App) showError(err error) {
