@@ -132,9 +132,11 @@ func (a *App) createComponentList() fyne.CanvasObject {
 		},
 	)
 
-	return container.NewVBox(
-		list,
-	)
+	// Wrap the list in a scrollable container with minimum height
+	scrollContainer := container.NewScroll(list)
+	scrollContainer.SetMinSize(fyne.NewSize(400, 300))
+
+	return scrollContainer
 }
 
 func (a *App) createStatusLabel(status analyzer.ComponentStatus) fyne.CanvasObject {

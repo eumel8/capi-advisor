@@ -112,17 +112,27 @@ func (a *App) buildTreeWidget() fyne.CanvasObject {
 	detailLabel := widget.NewLabel("Select a component to view details")
 	detailLabel.Wrapping = fyne.TextWrapWord
 
+	// Create detail scroll container
+	detailScroll := container.NewScroll(detailLabel)
+	detailScroll.SetMinSize(fyne.NewSize(300, 400))
+
 	tree.OnSelected = func(uid widget.TreeNodeID) {
 		comp := treeComponents[uid]
 		if comp != nil {
 			details := a.formatComponentDetails(comp)
 			detailLabel.SetText(details)
+			detailLabel.Refresh()
 		}
 	}
 
+	// Ensure tree selection is enabled
+	tree.OnUnselected = func(uid widget.TreeNodeID) {
+		// Allow re-selection of the same node
+	}
+
 	split := container.NewHSplit(
-		container.NewBorder(nil, nil, nil, nil, tree),
-		container.NewScroll(detailLabel),
+		container.NewScroll(tree),
+		detailScroll,
 	)
 	split.SetOffset(0.6)
 

@@ -68,6 +68,14 @@ Launch the GUI with:
 ./capi-advisor gui
 ```
 
+**Note**: On some systems, you may need to set the LANG and LC_ALL environment variables to ensure proper rendering:
+
+```bash
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+./capi-advisor gui
+```
+
 ### Options
 
 - `-n, --namespace <namespace>`: Analyze components in a specific namespace (default: all namespaces)
