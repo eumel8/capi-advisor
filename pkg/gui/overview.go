@@ -123,7 +123,6 @@ func (a *App) createComponentList() fyne.CanvasObject {
 
 			typeLabel := box.Objects[0].(*widget.Label)
 			nameLabel := box.Objects[1].(*widget.Label)
-			statusLabel := box.Objects[2]
 
 			typeLabel.SetText(string(comp.Type))
 			nameLabel.SetText(fmt.Sprintf("%s/%s", comp.Namespace, comp.Name))
@@ -139,39 +138,39 @@ func (a *App) createComponentList() fyne.CanvasObject {
 }
 
 func (a *App) createStatusLabel(status analyzer.ComponentStatus) fyne.CanvasObject {
-	var color color.Color
+	var textColor color.Color
 	switch status {
 	case analyzer.StatusHealthy:
-		color = color.NRGBA{R: 0, G: 150, B: 0, A: 255} // Green
+		textColor = color.NRGBA{R: 0, G: 150, B: 0, A: 255} // Green
 	case analyzer.StatusDegraded:
-		color = color.NRGBA{R: 255, G: 165, B: 0, A: 255} // Orange
+		textColor = color.NRGBA{R: 255, G: 165, B: 0, A: 255} // Orange
 	case analyzer.StatusFailed:
-		color = color.NRGBA{R: 200, G: 0, B: 0, A: 255} // Red
+		textColor = color.NRGBA{R: 200, G: 0, B: 0, A: 255} // Red
 	case analyzer.StatusPending:
-		color = color.NRGBA{R: 100, G: 100, B: 255, A: 255} // Blue
+		textColor = color.NRGBA{R: 100, G: 100, B: 255, A: 255} // Blue
 	default:
-		color = theme.ForegroundColor()
+		textColor = theme.ForegroundColor()
 	}
 
-	label := canvas.NewText(string(status), color)
+	label := canvas.NewText(string(status), textColor)
 	label.TextStyle.Bold = true
 	return container.NewHBox(label)
 }
 
 func (a *App) createSeverityLabel(severity analyzer.ConditionSeverity) fyne.CanvasObject {
-	var color color.Color
+	var textColor color.Color
 	switch severity {
 	case analyzer.SeverityCritical:
-		color = color.NRGBA{R: 200, G: 0, B: 0, A: 255} // Red
+		textColor = color.NRGBA{R: 200, G: 0, B: 0, A: 255} // Red
 	case analyzer.SeverityWarning:
-		color = color.NRGBA{R: 255, G: 165, B: 0, A: 255} // Orange
+		textColor = color.NRGBA{R: 255, G: 165, B: 0, A: 255} // Orange
 	case analyzer.SeverityInfo:
-		color = color.NRGBA{R: 100, G: 100, B: 255, A: 255} // Blue
+		textColor = color.NRGBA{R: 100, G: 100, B: 255, A: 255} // Blue
 	default:
-		color = theme.ForegroundColor()
+		textColor = theme.ForegroundColor()
 	}
 
-	label := canvas.NewText(string(severity), color)
+	label := canvas.NewText(string(severity), textColor)
 	label.TextStyle.Bold = true
 	return container.NewHBox(label)
 }
