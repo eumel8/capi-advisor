@@ -49,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(cmd.DoctorCmd)
 	rootCmd.AddCommand(cmd.TreeCmd)
 	rootCmd.AddCommand(cmd.OrphanedCmd)
+	rootCmd.AddCommand(cmd.GUICmd)
 }
 
 func main() {

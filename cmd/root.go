@@ -6,4 +6,5 @@ var (
 	DoctorCmd   = doctorCmd
 	TreeCmd     = treeCmd
 	OrphanedCmd = orphanedCmd
+	GUICmd      = guiCmd
 )
