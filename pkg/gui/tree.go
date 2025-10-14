@@ -22,13 +22,15 @@ func (a *App) createTreeTab() fyne.CanvasObject {
 	// Create tree widget
 	treeWidget := a.buildTreeWidget()
 
-	content := container.NewVBox(
-		title,
-		widget.NewSeparator(),
+	content := container.NewBorder(
+		container.NewVBox(title, widget.NewSeparator()),
+		nil,
+		nil,
+		nil,
 		treeWidget,
 	)
 
-	return container.NewScroll(content)
+	return content
 }
 
 func (a *App) buildTreeWidget() fyne.CanvasObject {
@@ -135,7 +137,7 @@ func (a *App) buildTreeWidget() fyne.CanvasObject {
 	}
 
 	split := container.NewHSplit(
-		container.NewScroll(tree),
+		tree,
 		detailScroll,
 	)
 	split.SetOffset(0.6)
