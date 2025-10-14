@@ -27,7 +27,7 @@ type App struct {
 
 func NewApp() *App {
 	return &App{
-		fyneApp: app.New(),
+		fyneApp:     app.New(),
 		treeBuilder: tree.NewTreeBuilder(),
 	}
 }
@@ -89,7 +89,6 @@ func (a *App) setupUI() {
 		container.NewTabItem("Component Tree", a.createTreeTab()),
 		container.NewTabItem("Issues & Recommendations", a.createIssuesTab()),
 	)
-
 
 	fyne.DoAndWait(func() {
 		a.window.SetContent(tabs)

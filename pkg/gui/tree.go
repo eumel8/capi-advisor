@@ -13,8 +13,8 @@ import (
 )
 
 func (a *App) createTreeTab() fyne.CanvasObject {
-	if a.rootComponents == nil || len(a.rootComponents) == 0 {
-		return widget.NewLabel("No component tree data available")
+	if a.components == nil || len(a.components) == 0 {
+		return widget.NewLabel("No component data available")
 	}
 
 	title := widget.NewLabelWithStyle("Component Dependency Tree", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -36,32 +36,36 @@ func (a *App) buildTreeWidget() fyne.CanvasObject {
 	treeData := make(map[string][]string)
 	treeComponents := make(map[string]*analyzer.Component)
 
-	var buildTree func(comp *analyzer.Component, parentID string)
-	buildTree = func(comp *analyzer.Component, parentID string) {
-		if comp == nil {
-			return
-		}
-
+	// First, index all components
+	for _, comp := range a.components {
 		nodeID := fmt.Sprintf("%s/%s/%s", comp.Namespace, comp.Type, comp.Name)
 		treeComponents[nodeID] = comp
+	}
 
-		if parentID != "" {
-			treeData[parentID] = append(treeData[parentID], nodeID)
-		}
-
-		// Process children
-		for _, child := range comp.Children {
-			buildTree(child, nodeID)
+	// Build parent-child relationships
+	for _, comp := range a.components {
+		if comp.Parent != nil {
+			parentID := fmt.Sprintf("%s/%s/%s", comp.Parent.Namespace, comp.Parent.Type, comp.Parent.Name)
+			childID := fmt.Sprintf("%s/%s/%s", comp.Namespace, comp.Type, comp.Name)
+			treeData[parentID] = append(treeData[parentID], childID)
 		}
 	}
 
-	// Build from root components
+	// Get root IDs (components without parents)
 	var rootIDs []string
-	for _, root := range a.rootComponents {
-		rootID := fmt.Sprintf("%s/%s/%s", root.Namespace, root.Type, root.Name)
-		rootIDs = append(rootIDs, rootID)
-		treeComponents[rootID] = root
-		buildTree(root, "")
+	for _, comp := range a.components {
+		if comp.Parent == nil {
+			rootID := fmt.Sprintf("%s/%s/%s", comp.Namespace, comp.Type, comp.Name)
+			rootIDs = append(rootIDs, rootID)
+		}
+	}
+
+	// If no root components found, show all components as roots (fallback)
+	if len(rootIDs) == 0 {
+		for _, comp := range a.components {
+			rootID := fmt.Sprintf("%s/%s/%s", comp.Namespace, comp.Type, comp.Name)
+			rootIDs = append(rootIDs, rootID)
+		}
 	}
 
 	// Create Fyne tree widget
