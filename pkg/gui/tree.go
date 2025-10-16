@@ -11,7 +11,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -126,8 +125,6 @@ func (g *DependencyGraph) layoutNodes() {
 	}
 
 	// Calculate positions in grid
-	nodeWidth := float32(150)
-	nodeHeight := float32(60)
 	horizontalSpacing := float32(180)
 	verticalSpacing := float32(100)
 
@@ -144,7 +141,7 @@ func (g *DependencyGraph) layoutNodes() {
 
 		// Calculate horizontal centering
 		totalWidth := float32(len(comps)) * horizontalSpacing
-		currentX := startX + (totalWidth / 2) - (horizontalSpacing / 2)
+		_ = startX + (totalWidth / 2) - (horizontalSpacing / 2)
 
 		for i, comp := range comps {
 			x := startX + float32(i)*horizontalSpacing
