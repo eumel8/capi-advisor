@@ -3,7 +3,7 @@ name: Build (template)
 on:
   push:
     tags:
-    - '*'
+      - "0.0.*"
   release:
     types: [created]
 
