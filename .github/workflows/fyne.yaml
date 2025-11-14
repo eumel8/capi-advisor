@@ -1,0 +1,60 @@
+# https://github.com/marketplace/actions/go-release-binaries
+name: Build fyne-app
+on:
+  push:
+    tags:        
+      - '*'
+    branches:
+      - dev
+  release:
+    types: [created]
+
+jobs:
+  fyne-cross-and-release:
+    name: build and release 
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v3
+    - name: install packages
+      run: |
+          go version
+          sudo apt update
+          sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
+          go install github.com/fyne-io/fyne-cross@latest
+          go install github.com/tcnksm/ghr@latest
+    - name: compile
+      run: |
+          export PATH=$PATH:~/go/bin
+          fyne-cross linux -output capi-advisor -arch=amd64,arm64,arm -debug .
+          ls -lR fyne-cross
+    - name: package
+      run: |
+          cd fyne-cross/bin/linux-arm64/; tar cvfz capi-advisor-arm64.tgz capi-advisor; cd ../../..
+          cd fyne-cross/bin/linux-arm/; tar cvfz capi-advisor-arm.tgz capi-advisor; cd ../../..
+          cd fyne-cross/bin/linux-amd64/; tar cvfz capi-advisor-amd64.tgz capi-advisor; cd ../../..
+          #sudo apt update
+          #sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
+          #sudo apt-get -y install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev gcc pkg-config libxxf86vm-dev
+    - name: Release linux-amd64
+      uses: fnkr/github-action-ghr@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GHR_PATH: fyne-cross/bin/linux-amd64/capi-advisor-amd64.tgz
+        GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        GHR_REPLACE: true
+    - name: Release linux-arm64
+      uses: fnkr/github-action-ghr@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GHR_PATH: fyne-cross/bin/linux-arm64/capi-advisor-arm64.tgz
+        GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        GHR_REPLACE: true
+    - name: Release linux-arm
+      uses: fnkr/github-action-ghr@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        GHR_PATH: fyne-cross/bin/linux-arm/capi-advisor-arm.tgz
+        GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        GHR_REPLACE: true
+

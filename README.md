@@ -1,9 +1,10 @@
 # CAPI Advisor
 
-A CLI tool to analyze Cluster API and Metal3 cluster components, check their conditions, build dependency trees, and provide clear advice on how to resolve any issues found.
+A CLI and GUI tool to analyze Cluster API and Metal3 cluster components, check their conditions, build dependency trees, and provide clear advice on how to resolve any issues found.
 
 ## Features
 
+- **Graphical User Interface**: Interactive GUI for visualizing cluster state and dependencies (NEW!)
 - **Comprehensive Component Discovery**: Automatically discovers all Cluster API and Metal3 components in your cluster
 - **Condition Analysis**: Analyzes all component conditions and identifies issues
 - **Dependency Tree Building**: Builds hierarchical dependency relationships between components
@@ -19,11 +20,46 @@ A CLI tool to analyze Cluster API and Metal3 cluster components, check their con
 
 ## Installation
 
+### CLI Only (No GUI Dependencies)
 ```bash
 go build -o capi-advisor .
 ```
 
+### With GUI Support
+
+For the GUI, you'll need system dependencies. See [GUI.md](GUI.md) for detailed installation instructions.
+
+**Quick start for Linux (Ubuntu/Debian):**
+```bash
+sudo apt-get install -y pkg-config libgl1-mesa-dev xorg-dev
+go build -o capi-advisor .
+```
+
 ## Usage
+
+### Graphical User Interface (NEW!)
+
+Launch the GUI for interactive visualization:
+
+```bash
+# Launch GUI for all clusters
+./capi-advisor gui
+
+# Launch GUI for specific namespace
+./capi-advisor gui -n cluster-system
+
+# Launch GUI for specific cluster
+./capi-advisor gui -c my-cluster
+```
+
+The GUI provides three interactive tabs:
+- **Overview**: Cluster health statistics, status breakdown, and component list
+- **Component Tree**: Interactive dependency tree with detailed component information
+- **Issues & Recommendations**: Categorized issues with resolution steps
+
+For more details, see [GUI.md](GUI.md).
+
+### Command Line Interface
 
 ### Comprehensive Analysis
 
