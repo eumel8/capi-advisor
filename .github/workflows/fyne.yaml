@@ -9,6 +9,9 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
   fyne-cross-and-release:
     name: build and release 
