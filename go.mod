@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	fyne.io/fyne/v2 v2.6.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
