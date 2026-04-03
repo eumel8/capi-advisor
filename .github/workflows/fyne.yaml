@@ -18,14 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v6
+      with:
+        go-version: '1.24.6'
     - name: install packages
       run: |
           go version
           sudo apt update
           sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
-          go install github.com/fyne-io/fyne-cross@latest
-          go install github.com/tcnksm/ghr@latest
+          go install github.com/fyne-io/fyne-cross@v1.6.1
+          go install github.com/tcnksm/ghr@v0.17.0
     - name: compile
       run: |
           export PATH=$PATH:~/go/bin
@@ -36,9 +38,6 @@ jobs:
           cd fyne-cross/bin/linux-arm64/; tar cvfz capi-advisor-arm64.tgz capi-advisor; cd ../../..
           cd fyne-cross/bin/linux-arm/; tar cvfz capi-advisor-arm.tgz capi-advisor; cd ../../..
           cd fyne-cross/bin/linux-amd64/; tar cvfz capi-advisor-amd64.tgz capi-advisor; cd ../../..
-          #sudo apt update
-          #sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
-          #sudo apt-get -y install libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev gcc pkg-config libxxf86vm-dev
     - name: Release linux-amd64
       uses: fnkr/github-action-ghr@v1
       if: startsWith(github.ref, 'refs/tags/')
@@ -46,6 +45,7 @@ jobs:
         GHR_PATH: fyne-cross/bin/linux-amd64/capi-advisor-amd64.tgz
         GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         GHR_REPLACE: true
+        GOTOOLCHAIN: go1.24.6
     - name: Release linux-arm64
       uses: fnkr/github-action-ghr@v1
       if: startsWith(github.ref, 'refs/tags/')
@@ -53,6 +53,7 @@ jobs:
         GHR_PATH: fyne-cross/bin/linux-arm64/capi-advisor-arm64.tgz
         GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         GHR_REPLACE: true
+        GOTOOLCHAIN: go1.24.6
     - name: Release linux-arm
       uses: fnkr/github-action-ghr@v1
       if: startsWith(github.ref, 'refs/tags/')
@@ -60,4 +61,5 @@ jobs:
         GHR_PATH: fyne-cross/bin/linux-arm/capi-advisor-arm.tgz
         GITHUB_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
         GHR_REPLACE: true
+        GOTOOLCHAIN: go1.24.6
 
