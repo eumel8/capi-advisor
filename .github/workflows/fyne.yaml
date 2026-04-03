@@ -26,8 +26,8 @@ jobs:
           go version
           sudo apt update
           sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
-          go install github.com/fyne-io/fyne-cross@v2.7.3
-          go install github.com/tcnksm/ghr@v0.17.0
+          #go install github.com/fyne-io/fyne-cross@v2.7.3
+          #go install github.com/tcnksm/ghr@v0.17.0
     - name: compile
       run: |
           export PATH=$PATH:~/go/bin
