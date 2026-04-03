@@ -97,6 +97,22 @@ func (a *Advisor) loadKnowledgeBase() {
 		Dependencies: []string{"BareMetalHost"},
 	}
 
+	a.knowledgeBase["Metal3Machine.Ready.False.WaitingForMetal3Data"] = KnowledgeEntry{
+		Condition:  "Metal3Machine Ready is False (WaitingForMetal3Data)",
+		Severity:   analyzer.SeverityCritical,
+		Cause:      "Metal3Machine is waiting for Metal3Data to become available. The machine requires rendered metadata and network data from a Metal3DataTemplate before provisioning can proceed.",
+		Resolution: "1. Check the Metal3DataClaim for this machine:\n      kubectl get metal3dataclaim <machine-name> -n <namespace>\n   2. Check if Metal3Data was created:\n      kubectl get metal3data -n <namespace> -l infrastructure.cluster.x-k8s.io/metal3machine=<machine-name>\n   3. Verify the Metal3DataTemplate referenced in the Metal3Machine spec exists:\n      kubectl get metal3datatemplate -n <namespace>\n   4. Look for stale Metal3DataClaim/Metal3Data from a previous provisioning cycle:\n      - A stale claim with wrong ownerRef UID blocks creation of new Metal3Data\n      - Delete the stale resources to trigger reconciliation:\n        kubectl delete metal3dataclaim <machine-name> -n <namespace>\n   5. Run capi-advisor doctor -n <namespace> to detect ownerRef interference and use --delete to clean up\n   6. Check metal3-controller-manager logs for reconciliation errors:\n      kubectl logs -n baremetal-operator-system deploy/metal3-controller-manager",
+		Dependencies: []string{"BareMetalHost"},
+	}
+
+	a.knowledgeBase["Metal3Machine.WaitingForMetal3Data.False"] = KnowledgeEntry{
+		Condition:  "Metal3Machine WaitingForMetal3Data is False",
+		Severity:   analyzer.SeverityWarning,
+		Cause:      "Metal3Data has not been created or is not ready. The Metal3DataClaim may be stale or the Metal3DataTemplate may be missing.",
+		Resolution: "1. Check the Metal3DataClaim for this machine:\n      kubectl get metal3dataclaim <machine-name> -n <namespace>\n   2. Check if Metal3Data was created:\n      kubectl get metal3data -n <namespace> -l infrastructure.cluster.x-k8s.io/metal3machine=<machine-name>\n   3. Verify the Metal3DataTemplate referenced in the Metal3Machine spec exists:\n      kubectl get metal3datatemplate -n <namespace>\n   4. Look for stale Metal3DataClaim/Metal3Data from a previous provisioning cycle:\n      - A stale claim with wrong ownerRef UID blocks creation of new Metal3Data\n      - Delete the stale resources to trigger reconciliation:\n        kubectl delete metal3dataclaim <machine-name> -n <namespace>\n   5. Run capi-advisor doctor -n <namespace> to detect ownerRef interference and use --delete to clean up\n   6. Check metal3-controller-manager logs for reconciliation errors:\n      kubectl logs -n baremetal-operator-system deploy/metal3-controller-manager",
+		Dependencies: []string{"BareMetalHost"},
+	}
+
 	// BareMetalHost conditions
 	a.knowledgeBase["BareMetalHost.Ready.False"] = KnowledgeEntry{
 		Condition:  "BareMetalHost Ready is False",
@@ -210,7 +226,13 @@ func (a *Advisor) analyzeComponent(comp *analyzer.Component) []*analyzer.Issue {
 
 	for _, condition := range comp.Conditions {
 		if condition.Status == metav1.ConditionFalse {
+			// Try reason-specific key first, then fall back to generic key
 			key := fmt.Sprintf("%s.%s.%s", comp.Type, condition.Type, condition.Status)
+			if condition.Reason != "" {
+				if reasonKey := fmt.Sprintf("%s.%s", key, condition.Reason); a.knowledgeBase[reasonKey].Condition != "" {
+					key = reasonKey
+				}
+			}
 			if knowledge, exists := a.knowledgeBase[key]; exists {
 				issue := &analyzer.Issue{
 					Component:   comp,
@@ -303,6 +325,12 @@ func (a *Advisor) getSpecificGuidanceFromReason(reason string, message string, c
 	if strings.Contains(reasonLower, "auth") || strings.Contains(messageLower, "auth") ||
 	   strings.Contains(messageLower, "permission") || strings.Contains(messageLower, "forbidden") {
 		return "   - Authentication/authorization issue detected. Verify:\n     * Service account has correct permissions\n     * RBAC roles and bindings are configured\n     * Secrets contain valid credentials\n     * API server is accessible"
+	}
+
+	// WaitingForMetal3Data — Metal3Machine is stuck waiting for Metal3DataClaim/Metal3Data
+	if strings.Contains(reasonLower, "waitingformetal3data") || strings.Contains(reasonLower, "metal3data") ||
+	   strings.Contains(messageLower, "metal3data") || strings.Contains(messageLower, "metal3dataclaim") {
+		return "   - Metal3Data not available. Investigate:\n     * Check Metal3DataClaim: kubectl get metal3dataclaim <machine-name> -n <namespace>\n     * Check Metal3Data: kubectl get metal3data -n <namespace>\n     * Look for stale Metal3DataClaim/Metal3Data from a previous provisioning cycle (wrong ownerRef UID)\n     * Delete stale Metal3DataClaim to trigger reconciliation: kubectl delete metal3dataclaim <machine-name> -n <namespace>\n     * Verify the Metal3DataTemplate referenced in Metal3Machine spec exists\n     * Run capi-advisor doctor -n <namespace> --delete to clean up ownerRef interference"
 	}
 
 	// Waiting for dependencies
