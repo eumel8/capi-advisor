@@ -28,6 +28,7 @@ jobs:
           sudo apt-get -y install bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
           go install github.com/fyne-io/fyne-cross@v1.6.1
           go install github.com/tcnksm/ghr@v0.17.0
+          #ldflags: "-X main.version=${{ github.ref_name }}"
     - name: compile
       run: |
           export PATH=$PATH:~/go/bin
