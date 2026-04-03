@@ -12,11 +12,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+type SecretMismatch struct {
+	SecretName    string
+	Metal3Machine string
+	Reason        string
+}
+
 type OrphanedResults struct {
-	Namespace        string
-	Metal3DataClaims []string
-	Metal3Data       []string
-	Secrets          []string
+	Namespace             string
+	Metal3DataClaims      []string
+	Metal3Data            []string
+	Secrets               []string
+	SecretOwnerMismatches []SecretMismatch
 }
 
 type Finder struct {
@@ -33,10 +40,11 @@ func NewFinder(k8sClient *client.K8sClient, namespace string) *Finder {
 
 func (f *Finder) FindOrphaned(ctx context.Context) (*OrphanedResults, error) {
 	results := &OrphanedResults{
-		Namespace:        f.namespace,
-		Metal3DataClaims: []string{},
-		Metal3Data:       []string{},
-		Secrets:          []string{},
+		Namespace:             f.namespace,
+		Metal3DataClaims:      []string{},
+		Metal3Data:            []string{},
+		Secrets:               []string{},
+		SecretOwnerMismatches: []SecretMismatch{},
 	}
 
 	// Find orphaned Metal3DataClaims
@@ -59,6 +67,13 @@ func (f *Finder) FindOrphaned(ctx context.Context) (*OrphanedResults, error) {
 		return nil, fmt.Errorf("failed to find orphaned Secrets: %w", err)
 	}
 	results.Secrets = secrets
+
+	// Find Metal3Machine secret ownerRef mismatches
+	mismatches, err := f.findMetal3MachineSecretMismatches(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find Metal3Machine secret owner mismatches: %w", err)
+	}
+	results.SecretOwnerMismatches = mismatches
 
 	return results, nil
 }
@@ -267,8 +282,7 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 			Do(ctx).
 			Error()
 		if err != nil {
-			// warn but continue
-			fmt.Sprintf("failed to delete Metal3DataClaim %s: %w", claim, err)
+			fmt.Printf("warning: failed to delete Metal3DataClaim %s: %v\n", claim, err)
 		}
 	}
 
@@ -284,35 +298,129 @@ func (f *Finder) CleanupOrphaned(ctx context.Context, results *OrphanedResults) 
 			Do(ctx).
 			Error()
 		if err != nil {
-			// warn but continue
-			fmt.Sprintf("failed to delete Metal3Data %s: %w", data, err)
+			fmt.Printf("warning: failed to delete Metal3Data %s: %v\n", data, err)
 		}
 	}
 
 	// Delete orphaned Secrets
 	for _, secret := range results.Secrets {
-		// Remove finalizers from secret
-		secretObj, err := f.client.Clientset.CoreV1().Secrets(f.namespace).Get(ctx, secret, metav1.GetOptions{})
-
-		if err != nil {
-			return fmt.Errorf("failed to get Secret %s: %w", secret, err)
+		if err := f.deleteSecret(ctx, secret); err != nil {
+			fmt.Printf("warning: %v\n", err)
 		}
-		if len(secretObj.Finalizers) > 0 {
-			secretObj.Finalizers = []string{}
-			_, err = f.client.Clientset.CoreV1().Secrets(f.namespace).Update(ctx, secretObj, metav1.UpdateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to remove finalizers from Secret %s: %w", secret, err)
-			}
-		}
+	}
 
-		err = f.client.Clientset.CoreV1().Secrets(f.namespace).Delete(ctx, secret, metav1.DeleteOptions{})
-		if err != nil {
-			// warn but continue
-			fmt.Sprintf("failed to delete Secret %s: %w", secret, err)
+	// Delete interfering secrets with ownerRef mismatches
+	for _, mismatch := range results.SecretOwnerMismatches {
+		if err := f.deleteSecret(ctx, mismatch.SecretName); err != nil {
+			fmt.Printf("warning: %v\n", err)
 		}
 	}
 
 	return nil
+}
+
+func (f *Finder) deleteSecret(ctx context.Context, name string) error {
+	secretObj, err := f.client.Clientset.CoreV1().Secrets(f.namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get Secret %s: %w", name, err)
+	}
+	if len(secretObj.Finalizers) > 0 {
+		secretObj.Finalizers = []string{}
+		_, err = f.client.Clientset.CoreV1().Secrets(f.namespace).Update(ctx, secretObj, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to remove finalizers from Secret %s: %w", name, err)
+		}
+	}
+	if err := f.client.Clientset.CoreV1().Secrets(f.namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("failed to delete Secret %s: %w", name, err)
+	}
+	return nil
+}
+
+// findMetal3MachineSecretMismatches checks secrets referenced in Metal3Machine
+// spec.metaData and spec.networkData for missing or stale ownerReferences.
+func (f *Finder) findMetal3MachineSecretMismatches(ctx context.Context) ([]SecretMismatch, error) {
+	mismatches := []SecretMismatch{}
+
+	m3mListRaw, err := f.client.Clientset.Discovery().RESTClient().
+		Get().
+		AbsPath("/apis/infrastructure.cluster.x-k8s.io/v1beta1/namespaces/" + f.namespace + "/metal3machines").
+		Do(ctx).
+		Raw()
+	if err != nil {
+		// CRD may not be installed — skip silently
+		return mismatches, nil
+	}
+
+	m3mList := &unstructured.UnstructuredList{}
+	if err := m3mList.UnmarshalJSON(m3mListRaw); err != nil {
+		return nil, err
+	}
+
+	for _, m3m := range m3mList.Items {
+		m3mName := m3m.GetName()
+		m3mUID := string(m3m.GetUID())
+
+		for _, field := range []string{"metaData", "networkData"} {
+			secretName, found, _ := unstructured.NestedString(m3m.Object, "spec", field, "name")
+			if !found || secretName == "" {
+				continue
+			}
+
+			secret, err := f.client.Clientset.CoreV1().Secrets(f.namespace).Get(ctx, secretName, metav1.GetOptions{})
+			if err != nil {
+				mismatches = append(mismatches, SecretMismatch{
+					SecretName:    secretName,
+					Metal3Machine: m3mName,
+					Reason:        fmt.Sprintf("spec.%s references non-existent secret", field),
+				})
+				continue
+			}
+
+			hasMatchingOwner := false
+			hasStaleOwner := false
+			for _, ownerRef := range secret.OwnerReferences {
+				switch ownerRef.Kind {
+				case "Metal3Machine":
+					if ownerRef.Name == m3mName && string(ownerRef.UID) == m3mUID {
+						hasMatchingOwner = true
+					} else if ownerRef.Name == m3mName {
+						// Same name, different UID — stale reference from a previous provisioning cycle
+						hasStaleOwner = true
+					}
+				case "Metal3DataClaim", "Metal3Data":
+					// Created through the data pipeline — valid ownership
+					hasMatchingOwner = true
+				}
+				if hasMatchingOwner {
+					break
+				}
+			}
+
+			switch {
+			case hasStaleOwner:
+				mismatches = append(mismatches, SecretMismatch{
+					SecretName:    secretName,
+					Metal3Machine: m3mName,
+					Reason:        fmt.Sprintf("spec.%s secret has stale ownerRef UID (interference from previous provisioning cycle)", field),
+				})
+			case !hasMatchingOwner && len(secret.OwnerReferences) == 0:
+				mismatches = append(mismatches, SecretMismatch{
+					SecretName:    secretName,
+					Metal3Machine: m3mName,
+					Reason:        fmt.Sprintf("spec.%s secret has no ownerReferences", field),
+				})
+			case !hasMatchingOwner:
+				mismatches = append(mismatches, SecretMismatch{
+					SecretName:    secretName,
+					Metal3Machine: m3mName,
+					Reason:        fmt.Sprintf("spec.%s secret ownerRef does not match this Metal3Machine", field),
+				})
+			}
+		}
+	}
+
+	return mismatches, nil
 }
 
 // removeFinalizers removes all finalizers from a Metal3 resource

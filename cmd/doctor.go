@@ -7,9 +7,12 @@ import (
 	"capi-advisor/pkg/advisor"
 	"capi-advisor/pkg/analyzer"
 	"capi-advisor/pkg/client"
+	"capi-advisor/pkg/orphaned"
 
 	"github.com/spf13/cobra"
 )
+
+var doctorDelete bool
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
@@ -22,6 +25,7 @@ This command focuses on identifying and providing solutions for issues.`,
 func init() {
 	doctorCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to analyze (empty for all namespaces)")
 	doctorCmd.Flags().StringVarP(&clusterName, "cluster", "c", "", "CAPI cluster name to analyze (empty for all clusters)")
+	doctorCmd.Flags().BoolVar(&doctorDelete, "delete", false, "Delete interfering resources found during diagnostics")
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
@@ -98,6 +102,55 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 				fmt.Printf("   %s %s: %d\n", icon, severity, count)
 			}
 		}
+	}
+
+	// Interference check — requires a specific namespace
+	if namespace != "" {
+		fmt.Println("\n🔧 Checking for interference...")
+		finder := orphaned.NewFinder(k8sClient, namespace)
+		orphanedResults, err := finder.FindOrphaned(ctx)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: could not check for interference: %v\n", err)
+		} else {
+			totalOrphaned := len(orphanedResults.Metal3DataClaims) + len(orphanedResults.Metal3Data) + len(orphanedResults.Secrets)
+			totalMismatches := len(orphanedResults.SecretOwnerMismatches)
+
+			if totalOrphaned == 0 && totalMismatches == 0 {
+				fmt.Println("✅ No interference detected")
+			} else {
+				if totalOrphaned > 0 {
+					fmt.Printf("\n⚠️  Found %d orphaned resource(s):\n", totalOrphaned)
+					for _, c := range orphanedResults.Metal3DataClaims {
+						fmt.Printf("   • Metal3DataClaim/%s\n", c)
+					}
+					for _, d := range orphanedResults.Metal3Data {
+						fmt.Printf("   • Metal3Data/%s\n", d)
+					}
+					for _, s := range orphanedResults.Secrets {
+						fmt.Printf("   • Secret/%s\n", s)
+					}
+				}
+				if totalMismatches > 0 {
+					fmt.Printf("\n⚠️  Found %d Metal3Machine secret ownerRef mismatch(es):\n", totalMismatches)
+					for _, m := range orphanedResults.SecretOwnerMismatches {
+						fmt.Printf("   🔴 Secret/%s (Metal3Machine: %s): %s\n", m.SecretName, m.Metal3Machine, m.Reason)
+					}
+				}
+
+				if doctorDelete {
+					fmt.Println("\n🗑️  Cleaning up interference...")
+					if err := finder.CleanupOrphaned(ctx, orphanedResults); err != nil {
+						fmt.Printf("⚠️  Warning: cleanup encountered errors: %v\n", err)
+					} else {
+						fmt.Println("✅ Interference cleaned up")
+					}
+				} else {
+					fmt.Println("\nUse --delete to remove interfering resources.")
+				}
+			}
+		}
+	} else {
+		fmt.Println("\n💡 Tip: specify -n <namespace> to also check for interference (orphaned resources, secret ownerRef mismatches).")
 	}
 
 	return nil
